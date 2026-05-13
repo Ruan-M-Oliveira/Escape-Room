@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title>Masmorra da Lógica</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#08071a;color:#e2e8f0;font-family:'Outfit',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.5rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(0,245,255,.1)}
+.logo{font-family:'Space Mono',monospace;font-size:1.2rem;background:linear-gradient(90deg,#00f5ff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hud{display:flex;gap:1.5rem;align-items:center}
+.hud-box{text-align:center}
+.hud-val{font-family:'Space Mono',monospace;font-size:1.2rem;font-weight:700;color:#00f5ff}
+.hud-lbl{font-size:.7rem;color:#475569;text-transform:uppercase}
+main{display:flex;flex:1;gap:0;overflow:hidden}
+#map-wrap{position:relative;flex:0 0 auto;padding:1rem}
+canvas{display:block;border-radius:12px;border:1px solid rgba(0,245,255,.08)}
+aside{flex:1;min-width:260px;max-width:320px;padding:1.2rem;display:flex;flex-direction:column;gap:1rem;border-left:1px solid rgba(255,255,255,.06);overflow-y:auto}
+.room-card{background:rgba(255,255,255,.04);border:1px solid rgba(0,245,255,.15);border-radius:14px;padding:1.2rem}
+.room-name{font-size:1.1rem;font-weight:700;color:#00f5ff;margin-bottom:.8rem;font-family:'Space Mono',monospace}
+.tokens-row{display:flex;gap:.8rem}
+.token{width:52px;height:52px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid;font-weight:700;font-size:.85rem;cursor:default}
+.token.T{background:rgba(74,222,128,.15);border-color:#4ade80;color:#4ade80}
+.token.F{background:rgba(239,68,68,.15);border-color:#ef4444;color:#ef4444}
+.token-label{font-size:.65rem;opacity:.7;margin-top:1px}
+.panel-title{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:.5rem}
+.door-btn{width:100%;padding:.8rem 1rem;border-radius:10px;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);color:#d8b4fe;font-family:'Outfit',sans-serif;font-size:.9rem;cursor:pointer;text-align:left;transition:all .2s;margin-bottom:.5rem;display:flex;align-items:center;gap:.6rem}
+.door-btn:hover{background:rgba(168,85,247,.22);border-color:#a855f7;transform:translateX(3px)}
+.door-btn .formula{font-family:'Space Mono',monospace;font-size:1rem;color:#c084fc}
+.door-btn .dest{font-size:.8rem;color:#64748b}
+.tip{font-size:.8rem;color:#334155;line-height:1.5;padding:.8rem;background:rgba(255,255,255,.02);border-radius:8px;border-left:2px solid #a855f7}
+/* Modal */
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:100;align-items:center;justify-content:center}
+#modal.show{display:flex}
+.modal-box{background:#0f0e2a;border:1px solid rgba(0,245,255,.2);border-radius:20px;padding:2.5rem;max-width:440px;width:90%;text-align:center;box-shadow:0 0 60px rgba(0,245,255,.1)}
+.modal-box h2{font-size:1rem;color:#64748b;margin-bottom:.5rem;font-family:'Space Mono',monospace}
+.formula-big{font-size:2.5rem;font-weight:900;background:linear-gradient(135deg,#00f5ff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:1rem 0;font-family:'Space Mono',monospace}
+.pqr-display{display:flex;gap:1rem;justify-content:center;margin:1rem 0}
+.pqr-chip{padding:.4rem .9rem;border-radius:8px;font-family:'Space Mono',monospace;font-size:.9rem;font-weight:700}
+.pqr-chip.T{background:rgba(74,222,128,.2);border:1px solid #4ade80;color:#4ade80}
+.pqr-chip.F{background:rgba(239,68,68,.2);border:1px solid #ef4444;color:#ef4444}
+.modal-q{color:#94a3b8;margin-bottom:1.5rem;font-size:.95rem}
+.answer-btns{display:flex;gap:1rem;justify-content:center}
+.btn-v{padding:.9rem 2rem;border-radius:50px;background:linear-gradient(135deg,#4ade80,#16a34a);border:none;color:#000;font-size:1rem;font-weight:700;cursor:pointer;transition:transform .2s,box-shadow .2s;font-family:'Outfit',sans-serif}
+.btn-f{padding:.9rem 2rem;border-radius:50px;background:linear-gradient(135deg,#ef4444,#b91c1c);border:none;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:transform .2s,box-shadow .2s;font-family:'Outfit',sans-serif}
+.btn-v:hover,.btn-f:hover{transform:scale(1.06)}
+#modal-feedback{margin-top:1.2rem;font-size:1rem;font-weight:700;min-height:1.4rem}
+.fb-ok{color:#4ade80}
+.fb-err{color:#ef4444}
+.btn-close{margin-top:1rem;background:transparent;border:1px solid #334155;color:#64748b;padding:.6rem 1.5rem;border-radius:50px;cursor:pointer;font-family:'Outfit',sans-serif;transition:border-color .2s}
+.btn-close:hover{border-color:#a855f7;color:#d8b4fe}
+/* Win screen */
+#win{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:200;align-items:center;justify-content:center;flex-direction:column;text-align:center}
+#win.show{display:flex}
+#win h1{font-size:3rem;font-weight:900;background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#win p{color:#94a3b8;margin:1rem 0 2rem;font-size:1.1rem}
+.btn-play-again{padding:1rem 2.5rem;border-radius:50px;background:linear-gradient(135deg,#00f5ff,#a855f7);border:none;color:#000;font-size:1rem;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⚔ Masmorra da Lógica</div>
+  <div class="hud">
+    <div class="hud-box"><div class="hud-val" id="h-score">0</div><div class="hud-lbl">Pontos</div></div>
+    <div class="hud-box"><div class="hud-val" id="h-lives">❤❤❤</div><div class="hud-lbl">Vidas</div></div>
+    <div class="hud-box"><div class="hud-val" id="h-rooms">1/10</div><div class="hud-lbl">Salas</div></div>
+  </div>
+</header>
+<main>
+  <div id="map-wrap"><canvas id="map" width="760" height="510"></canvas></div>
+  <aside>
+    <div class="room-card">
+      <div class="room-name" id="side-room">INÍCIO</div>
+      <div class="panel-title">Tokens da Sala</div>
+      <div class="tokens-row" id="side-tokens"></div>
+    </div>
+    <div>
+      <div class="panel-title">Portas disponíveis</div>
+      <div id="door-list"></div>
+    </div>
+    <div class="tip" id="tip-box">Clique numa porta para avaliar o seu selo lógico e passar para a próxima sala.</div>
+  </aside>
+</main>
+
+<div id="modal">
+  <div class="modal-box">
+    <h2 id="m-from-to">INÍCIO → Sala A</h2>
+    <div class="formula-big" id="m-formula">P∧Q</div>
+    <div class="pqr-display" id="m-pqr"></div>
+    <div class="modal-q">Este selo é VERDADEIRO ou FALSO?</div>
+    <div class="answer-btns">
+      <button class="btn-v" onclick="answer(true)">✓ VERDADEIRO</button>
+      <button class="btn-f" onclick="answer(false)">✗ FALSO</button>
+    </div>
+    <div id="modal-feedback"></div>
+    <button class="btn-close" id="modal-close-btn" onclick="closeModal()">Fechar</button>
+  </div>
+</div>
+
+<div id="win">
+  <div>
+    <div style="font-size:4rem">🏆</div>
+    <h1>Masmorra Conquistada!</h1>
+    <p id="win-msg">Você resolveu todos os selos lógicos!</p>
+    <button class="btn-play-again" onclick="resetGame()">Jogar Novamente</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
