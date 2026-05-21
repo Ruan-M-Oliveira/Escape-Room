@@ -1,0 +1,15 @@
+#modal.show, #win.show { display: flex !important; }
+.tokens-row { display: flex; gap: 0.8rem; }
+.token { width: 52px; height: 52px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid; font-weight: 700; font-size: 0.85rem; cursor: default; }
+.token.T { background: rgba(74,222,128,0.15); border-color: #4ade80; color: #4ade80; }
+.token.F { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #ef4444; }
+.token-label { font-size: 0.65rem; opacity: 0.7; margin-top: 1px; }
+.door-btn { width: 100%; padding: 0.8rem 1rem; border-radius: 10px; background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); color: #d8b4fe; font-family: 'Outfit', sans-serif; font-size: 0.9rem; cursor: pointer; text-align: left; transition: all 0.2s; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.6rem; }
+.door-btn:hover { background: rgba(168,85,247,0.22); border-color: #a855f7; transform: translateX(3px); }
+.door-btn .formula { font-family: 'Space Mono', monospace; font-size: 1rem; color: #c084fc; }
+.door-btn .dest { font-size: 0.8rem; color: #64748b; }
+.pqr-chip { padding: 0.4rem 0.9rem; border-radius: 8px; font-family: 'Space Mono', monospace; font-size: 0.9rem; font-weight: 700; }
+.pqr-chip.T { background: rgba(74,222,128,0.2); border: 1px solid #4ade80; color: #4ade80; }
+.pqr-chip.F { background: rgba(239,68,68,0.2); border: 1px solid #ef4444; color: #ef4444; }
+.fb-ok { color: #4ade80; }
+.fb-err { color: #ef4444; }
