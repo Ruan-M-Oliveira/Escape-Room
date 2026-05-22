@@ -126,8 +126,33 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
   let timerStart = 0;
   let isModalOpen = false;
 
-  if (!canvas) return () => {}; 
+  if (!canvas) return () => {};
+
+  // Ajusta o canvas para caber todo o mapa (e manter responsivo)
+  const margin = 20;
+  const mapWidth = Math.max(...COL) + RW + margin;
+  const mapHeight = Math.max(...ROW) + RH + margin;
+
+  // Define o tamanho CSS do canvas e configura resolução para displays HiDPI
+  if (canvas.parentElement) {
+    // tenta caber na largura do container sem ultrapassar
+    const parentW = canvas.parentElement.clientWidth || mapWidth;
+    const cssW = Math.min(parentW - 32, mapWidth); // deixa um pouco de padding
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = mapHeight + 'px';
+  } else {
+    canvas.style.width = mapWidth + 'px';
+    canvas.style.height = mapHeight + 'px';
+  }
+
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  // scale so drawing commands use CSS pixels
+  if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   function drawRoundRect(x: number, y: number, w: number, h: number, r: number, fill: string | null, stroke: string | null, sw: number = 1) {
     ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
@@ -217,14 +242,16 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
   }
 
   function drawAll() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    const CSS_W = canvas.width / (window.devicePixelRatio || 1);
+    const CSS_H = canvas.height / (window.devicePixelRatio || 1);
+    ctx.clearRect(0, 0, CSS_W, CSS_H);
+    const bg = ctx.createLinearGradient(0, 0, CSS_W, CSS_H);
     bg.addColorStop(0, '#08071a'); bg.addColorStop(1, '#0d0a24');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, CSS_W, CSS_H);
 
     ctx.strokeStyle = 'rgba(0,245,255,0.02)'; ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
-    for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+    for (let x = 0; x < CSS_W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CSS_H); ctx.stroke(); }
+    for (let y = 0; y < CSS_H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CSS_W, y); ctx.stroke(); }
 
     DOORS.forEach(drawCorridor);
     Object.values(ROOMS).forEach(r => { if (r.col === 3 && r.row === 0) return; if (r.col === 0 && r.row === 2) return; drawRoom(r); });
@@ -405,11 +432,9 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
     const mouseEvent = e as MouseEvent;
     
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    const mx = (mouseEvent.clientX - rect.left) * scaleX;
-    const my = (mouseEvent.clientY - rect.top) * scaleY;
+    // Usamos coordenadas CSS (px) pois todo o desenho é feito em CSS pixels
+    const mx = mouseEvent.clientX - rect.left;
+    const my = mouseEvent.clientY - rect.top;
     
     let best: Door | null = null, bestD = 99;
     

@@ -107,12 +107,10 @@ function GameRoom() {
       
       <main className="flex flex-col md:flex-row flex-1 overflow-hidden relative min-h-[calc(100vh-5.5rem)]">
         <div id="map-wrap" className="relative flex-1 flex items-center justify-center p-4 bg-[#0a081a] overflow-auto shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] min-h-[56vh] md:min-h-[64vh] lg:min-h-[72vh]">
-          <canvas 
+          <canvas
             ref={canvasRef}
-            id="map" 
-            width="760" 
-            height="510" 
-            className="block rounded-xl border border-cyan-500/20 w-full max-w-[900px] max-h-[72vh] h-auto aspect-[760/510] shadow-[0_0_40px_rgba(0,245,255,0.05)] cursor-pointer"
+            id="map"
+            className="block rounded-xl border border-cyan-500/20 w-full max-w-[1000px] max-h-[72vh] h-auto shadow-[0_0_40px_rgba(0,245,255,0.05)] cursor-pointer"
           ></canvas>
         </div>
         
