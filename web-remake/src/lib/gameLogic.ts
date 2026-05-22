@@ -16,30 +16,6 @@ export interface Door {
   dir: 'h' | 'v';
 }
 
-export interface ScoreEntry {
-  nickname: string;
-  score: number;
-  rooms: number;
-  won: boolean;
-  date: string;
-}
-
-export function getPlayer(): string | null {
-  try { return localStorage.getItem('escape_player'); } catch { return null; }
-}
-
-export function setPlayer(nickname: string) {
-  try { localStorage.setItem('escape_player', nickname); } catch { /* ignore */ }
-}
-
-export function getScores(): ScoreEntry[] {
-  try {
-    const raw = localStorage.getItem('escape_scores');
-    if (!raw) return [];
-    return JSON.parse(raw) as ScoreEntry[];
-  } catch { return []; }
-}
-
 declare global {
   interface Window {
     answer: (userSays: boolean) => void;
@@ -48,8 +24,50 @@ declare global {
   }
 }
 
-// === NOVO: O jogo agora recebe a dificuldade via parâmetro ===
-export function initGame(config: { timeLimit: number | null, maxLives: number }) {
+// ==========================================
+// SISTEMA DE LEADERBOARD E JOGADOR (EXPORTAÇÕES)
+// ==========================================
+
+export interface ScoreEntry {
+  name: string;
+  score: number;
+  mode: string;
+  date: string;
+}
+
+export function getPlayer(): string {
+  return localStorage.getItem('escape_player') || 'Hacker_Anónimo';
+}
+
+export function setPlayer(name: string) {
+  localStorage.setItem('escape_player', name);
+}
+
+export function getScores(): ScoreEntry[] {
+  const scores = localStorage.getItem('escape_scores');
+  return scores ? JSON.parse(scores) : [];
+}
+
+export function saveScore(score: number, modeName: string) {
+  const scores = getScores();
+  const playerName = getPlayer();
+  
+  scores.push({ 
+    name: playerName, 
+    score, 
+    mode: modeName, 
+    date: new Date().toLocaleDateString() 
+  });
+  
+  scores.sort((a, b) => b.score - a.score);
+  localStorage.setItem('escape_scores', JSON.stringify(scores.slice(0, 10)));
+}
+
+// ==========================================
+// MOTOR DO JOGO PRINCIPAL
+// ==========================================
+// AGORA RECEBEMOS O CANVAS DIRETAMENTE DA REFERÊNCIA DO REACT!
+export function initGame(config: { timeLimit: number | null, maxLives: number, modeName: string }, canvas: HTMLCanvasElement) {
   
   const ROOMS: Record<string, Room> = {
     inicio: { id: 'inicio', name: 'INÍCIO', col: 0, row: 0, P: true, Q: true, R: false, type: 'start' },
@@ -100,12 +118,11 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
     return { x: (roomCX(f) + roomCX(t)) / 2, y: (roomCY(f) + roomCY(t)) / 2 };
   }
 
-  // === ESTADOS DO JOGO ===
   let current: string = 'inicio';
   let visited = new Set<string>(['inicio']);
   let unlocked = new Set<string>();
   let score: number = 0;
-  let lives: number = config.maxLives; 
+  let lives: number = config.maxLives;
   let activeDoor: Door | null = null;
   let tick: number = 0;
   let loopId: number;
@@ -117,8 +134,8 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
   let timerStart = 0;
   let isModalOpen = false;
 
-  const canvas = document.getElementById('map') as HTMLCanvasElement;
-  if (!canvas) return; 
+  // Garante que o canvas foi entregue pelo React, caso contrário aborta com segurança
+  if (!canvas) return () => {}; 
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
   function drawRoundRect(x: number, y: number, w: number, h: number, r: number, fill: string | null, stroke: string | null, sw: number = 1) {
@@ -254,38 +271,48 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
 
   function updateSidebar() {
     const r = ROOMS[current];
-    document.getElementById('side-room')!.textContent = r.name;
-    const tRow = document.getElementById('side-tokens') as HTMLElement;
-    tRow.innerHTML = '';
-    [{ l: 'P', v: r.P }, { l: 'Q', v: r.Q }, { l: 'R', v: r.R }].forEach(t => {
-      const d = document.createElement('div');
-      d.className = 'token ' + (t.v ? 'T' : 'F');
-      d.innerHTML = `<span>${t.v ? 'V' : 'F'}</span><span class="token-label">${t.l}</span>`;
-      tRow.appendChild(d);
-    });
+    const sideRoomEl = document.getElementById('side-room');
+    if(sideRoomEl) sideRoomEl.textContent = r.name;
+    
+    const tRow = document.getElementById('side-tokens');
+    if(tRow) {
+      tRow.innerHTML = '';
+      [{ l: 'P', v: r.P }, { l: 'Q', v: r.Q }, { l: 'R', v: r.R }].forEach(t => {
+        const d = document.createElement('div');
+        d.className = 'token ' + (t.v ? 'T' : 'F');
+        d.innerHTML = `<span>${t.v ? 'V' : 'F'}</span><span class="token-label">${t.l}</span>`;
+        tRow.appendChild(d);
+      });
+    }
 
-    const dl = document.getElementById('door-list') as HTMLElement;
-    dl.innerHTML = '';
-    const avail = DOORS.filter(d => d.from === current || (d.to === current));
-    avail.forEach(d => {
-      const dest = d.from === current ? d.to : d.from;
-      const key = d.from + '→' + d.to;
-      const done = unlocked.has(key);
-      const btn = document.createElement('button');
-      btn.className = 'door-btn';
-      btn.innerHTML = `<span class="formula">${d.formula}</span><span class="dest">→ ${ROOMS[dest].name}${done ? ' ✓' : ''}</span>`;
-      btn.onclick = () => openModal(d);
-      if (d.to === current && !unlocked.has(d.from + '→' + d.to)) btn.style.opacity = '0.4';
-      else if (d.to === current) btn.onclick = () => moveRoom(d.from);
-      dl.appendChild(btn);
-    });
+    const dl = document.getElementById('door-list');
+    if(dl) {
+      dl.innerHTML = '';
+      const avail = DOORS.filter(d => d.from === current || (d.to === current));
+      avail.forEach(d => {
+        const dest = d.from === current ? d.to : d.from;
+        const key = d.from + '→' + d.to;
+        const done = unlocked.has(key);
+        const btn = document.createElement('button');
+        btn.className = 'door-btn';
+        btn.innerHTML = `<span class="formula">${d.formula}</span><span class="dest">→ ${ROOMS[dest].name}${done ? ' ✓' : ''}</span>`;
+        btn.onclick = () => openModal(d);
+        if (d.to === current && !unlocked.has(d.from + '→' + d.to)) btn.style.opacity = '0.4';
+        else if (d.to === current) btn.onclick = () => moveRoom(d.from);
+        dl.appendChild(btn);
+      });
+    }
 
-    document.getElementById('h-score')!.textContent = score.toString();
-    document.getElementById('h-rooms')!.textContent = `${visited.size}/10`;
-    document.getElementById('h-lives')!.textContent = '❤'.repeat(lives) + '🖤'.repeat(Math.max(0, config.maxLives - lives));
+    const scoreEl = document.getElementById('h-score');
+    if(scoreEl) scoreEl.textContent = score.toString();
+    
+    const roomsEl = document.getElementById('h-rooms');
+    if(roomsEl) roomsEl.textContent = `${visited.size}/10`;
+    
+    const livesEl = document.getElementById('h-lives');
+    if(livesEl) livesEl.textContent = '❤'.repeat(lives) + '🖤'.repeat(Math.max(0, config.maxLives - lives));
   }
 
-  // === MOTOR DE TEMPO ===
   function processTimer() {
     if (!isModalOpen || !config.timeLimit) return;
     
@@ -335,7 +362,9 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
     document.getElementById('modal-feedback')!.textContent = '';
     document.getElementById('modal-feedback')!.className = '';
     document.getElementById('modal-close-btn')!.style.display = 'none';
-    document.getElementById('modal')!.classList.add('show');
+    const modal = document.getElementById('modal')!;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
 
     isModalOpen = true;
     if (config.timeLimit) {
@@ -351,7 +380,7 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
   function answer(userSays: boolean) {
     if (!activeDoor || !isModalOpen) return;
     
-    isModalOpen = false;
+    isModalOpen = false; 
     cancelAnimationFrame(timerRafId);
     
     const r = ROOMS[current];
@@ -361,7 +390,7 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
     const destinationRoom = activeDoor.from === current ? activeDoor.to : activeDoor.from;
     
     if (userSays === correct) {
-      score += (config.timeLimit === 5 ? 300 : config.timeLimit ? 150 : 100); 
+      score += (config.timeLimit === 5 ? 300 : config.timeLimit ? 150 : 100);
       unlocked.add(key);
       fb.textContent = '✓ Acesso Concedido!'; fb.className = 'fb-ok';
       document.getElementById('modal-close-btn')!.style.display = 'inline-block';
@@ -378,19 +407,28 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
   function closeModal() {
     isModalOpen = false;
     cancelAnimationFrame(timerRafId);
-    document.getElementById('modal')!.classList.remove('show');
+    const modal = document.getElementById('modal')!;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
     activeDoor = null;
   }
 
   function moveRoom(id: string) {
     current = id; visited.add(id); updateSidebar();
-    if (ROOMS[id].type === 'end') document.getElementById('win')!.classList.add('show');
+    if (ROOMS[id].type === 'end') {
+      const win = document.getElementById('win')!;
+      win.classList.remove('hidden');
+      win.classList.add('flex');
+      saveScore(score, config.modeName);
+    }
   }
 
   function resetGame() {
     current = 'inicio'; visited = new Set(['inicio']); unlocked = new Set(); 
     score = 0; lives = config.maxLives; activeDoor = null;
-    document.getElementById('win')!.classList.remove('show');
+    const win = document.getElementById('win')!;
+    win.classList.add('hidden');
+    win.classList.remove('flex');
     updateSidebar();
   }
 
@@ -399,23 +437,20 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
   window.resetGame = resetGame;
 
   const clickHandler = (e: MouseEvent) => {
-    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / canvas.clientWidth;
+    const scaleY = canvas.height / canvas.clientHeight;
     
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    
-    const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * scaleY;
+    const mx = e.offsetX * scaleX;
+    const my = e.offsetY * scaleY;
     
     let best: Door | null = null, bestD = 99;
     
     DOORS.forEach(d => {
       const p = doorPt(d); 
       const dist = Math.hypot(mx - p.x, my - p.y);
-      
       const isConnected = d.from === current || d.to === current;
       
-      if (isConnected && dist < 22 && dist < bestD) { 
+      if (isConnected && dist < 60 && dist < bestD) { 
         bestD = dist; 
         best = d; 
       }
@@ -426,17 +461,15 @@ export function initGame(config: { timeLimit: number | null, maxLives: number })
 
   canvas.addEventListener('click', clickHandler);
 
-  function loop() { 
-    loopId = requestAnimationFrame(loop); 
-    drawAll(); 
-  }
+  function loop() { loopId = requestAnimationFrame(loop); drawAll(); }
   
-  updateSidebar(); 
+
+  setTimeout(updateSidebar, 50); 
   loop();
 
   return () => { 
     cancelAnimationFrame(loopId); 
     cancelAnimationFrame(timerRafId); 
-    canvas.removeEventListener('click', clickHandler); 
+    canvas.removeEventListener('click', clickHandler);
   };
 }
