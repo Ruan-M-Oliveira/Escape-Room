@@ -25,9 +25,8 @@ declare global {
 }
 
 // ==========================================
-// SISTEMA DE LEADERBOARD E JOGADOR (EXPORTAÇÕES)
+// SISTEMA DE LEADERBOARD E JOGADOR
 // ==========================================
-
 export interface ScoreEntry {
   name: string;
   score: number;
@@ -36,7 +35,7 @@ export interface ScoreEntry {
 }
 
 export function getPlayer(): string {
-  return localStorage.getItem('escape_player') || 'Hacker_Anónimo';
+  return localStorage.getItem('escape_player') || 'Hacker_Anônimo';
 }
 
 export function setPlayer(name: string) {
@@ -50,15 +49,12 @@ export function getScores(): ScoreEntry[] {
 
 export function saveScore(score: number, modeName: string) {
   const scores = getScores();
-  const playerName = getPlayer();
-  
   scores.push({ 
-    name: playerName, 
+    name: getPlayer(), 
     score, 
     mode: modeName, 
     date: new Date().toLocaleDateString() 
   });
-  
   scores.sort((a, b) => b.score - a.score);
   localStorage.setItem('escape_scores', JSON.stringify(scores.slice(0, 10)));
 }
@@ -66,7 +62,6 @@ export function saveScore(score: number, modeName: string) {
 // ==========================================
 // MOTOR DO JOGO PRINCIPAL
 // ==========================================
-// AGORA RECEBEMOS O CANVAS DIRETAMENTE DA REFERÊNCIA DO REACT!
 export function initGame(config: { timeLimit: number | null, maxLives: number, modeName: string }, canvas: HTMLCanvasElement) {
   
   const ROOMS: Record<string, Room> = {
@@ -113,10 +108,7 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
   function roomRect(r: Room) { return { x: COL[r.col], y: ROW[r.row], w: RW, h: RH }; }
   function roomCX(r: Room) { return COL[r.col] + RW / 2; }
   function roomCY(r: Room) { return ROW[r.row] + RH / 2; }
-  function doorPt(d: Door) {
-    const f = ROOMS[d.from], t = ROOMS[d.to];
-    return { x: (roomCX(f) + roomCX(t)) / 2, y: (roomCY(f) + roomCY(t)) / 2 };
-  }
+  function doorPt(d: Door) { return { x: (roomCX(ROOMS[d.from]) + roomCX(ROOMS[d.to])) / 2, y: (roomCY(ROOMS[d.from]) + roomCY(ROOMS[d.to])) / 2 }; }
 
   let current: string = 'inicio';
   let visited = new Set<string>(['inicio']);
@@ -134,7 +126,6 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
   let timerStart = 0;
   let isModalOpen = false;
 
-  // Garante que o canvas foi entregue pelo React, caso contrário aborta com segurança
   if (!canvas) return () => {}; 
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
@@ -146,8 +137,7 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
 
   function drawGlow(x: number, y: number, r: number, color: string, alpha: number = 0.35) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    const colorWithAlpha = color.replace('rgb', 'rgba').replace(')', `,${alpha})`);
-    g.addColorStop(0, colorWithAlpha);
+    g.addColorStop(0, color.replace(')', `,${alpha})`).replace('rgb', 'rgba'));
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
@@ -180,34 +170,28 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
 
     ctx.fillStyle = isCur ? '#00f5ff' : isEnd ? '#fbbf24' : isStart ? '#4ade80' : '#64748b';
     ctx.font = `bold 11px "Space Mono"`;
-    ctx.textAlign = 'center';
-    ctx.fillText(room.name, x + RW / 2, y + RH - 12);
+    ctx.textAlign = 'center'; ctx.fillText(room.name, x + RW / 2, y + RH - 12);
 
     const rObj = ROOMS[room.id];
-    const toks = [{ l: 'P', v: rObj.P }, { l: 'Q', v: rObj.Q }, { l: 'R', v: rObj.R }];
-    toks.forEach((t, i) => {
+    [{ l: 'P', v: rObj.P }, { l: 'Q', v: rObj.Q }, { l: 'R', v: rObj.R }].forEach((t, i) => {
       const tx = x + 24 + i * 36, ty2 = y + 18;
       ctx.beginPath(); ctx.arc(tx, ty2, 12, 0, Math.PI * 2);
       ctx.fillStyle = t.v ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)'; ctx.fill();
       ctx.strokeStyle = t.v ? '#4ade80' : '#ef4444'; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.fillStyle = t.v ? '#4ade80' : '#ef4444';
-      ctx.font = 'bold 9px Outfit'; ctx.textAlign = 'center';
-      ctx.fillText(t.v ? 'V' : 'F', tx, ty2 + 3);
-      ctx.fillStyle = '#475569'; ctx.font = '8px Outfit';
-      ctx.fillText(t.l, tx, ty2 + 15);
+      ctx.font = 'bold 9px Outfit'; ctx.textAlign = 'center'; ctx.fillText(t.v ? 'V' : 'F', tx, ty2 + 3);
+      ctx.fillStyle = '#475569'; ctx.font = '8px Outfit'; ctx.fillText(t.l, tx, ty2 + 15);
     });
   }
 
   function drawCorridor(d: Door) {
     const f = ROOMS[d.from], t = ROOMS[d.to];
     if (d.dir === 'h') {
-      const x1 = COL[f.col] + RW, x2 = COL[t.col];
-      const cy = roomCY(f);
+      const x1 = COL[f.col] + RW, x2 = COL[t.col], cy = roomCY(f);
       ctx.fillStyle = '#070614'; ctx.fillRect(x1, cy - 18, x2 - x1, 36);
       ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.strokeRect(x1, cy - 18, x2 - x1, 36);
     } else {
-      const y1 = ROW[f.row] + RH, y2 = ROW[t.row];
-      const cx = roomCX(f);
+      const y1 = ROW[f.row] + RH, y2 = ROW[t.row], cx = roomCX(f);
       ctx.fillStyle = '#070614'; ctx.fillRect(cx - 18, y1, 36, y2 - y1);
       ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.strokeRect(cx - 18, y1, 36, y2 - y1);
     }
@@ -223,10 +207,8 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
     drawGlow(x, y, 28 * pulse, gc, acc ? 0.35 : 0.15);
 
     ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI * 2);
-    ctx.fillStyle = done ? 'rgba(74,222,128,0.15)' : acc ? 'rgba(0,245,255,0.1)' : 'rgba(80,40,140,0.3)';
-    ctx.fill();
-    ctx.strokeStyle = done ? '#4ade80' : acc ? '#00f5ff' : '#5b21b6';
-    ctx.lineWidth = done || acc ? 1.5 : 1; ctx.stroke();
+    ctx.fillStyle = done ? 'rgba(74,222,128,0.15)' : acc ? 'rgba(0,245,255,0.1)' : 'rgba(80,40,140,0.3)'; ctx.fill();
+    ctx.strokeStyle = done ? '#4ade80' : acc ? '#00f5ff' : '#5b21b6'; ctx.lineWidth = done || acc ? 1.5 : 1; ctx.stroke();
 
     ctx.fillStyle = done ? '#4ade80' : acc ? '#e2e8f0' : '#7c3aed';
     ctx.font = `bold 9px "Space Mono"`;
@@ -245,27 +227,18 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
     for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
 
     DOORS.forEach(drawCorridor);
-    Object.values(ROOMS).forEach(r => {
-      if (r.col === 3 && r.row === 0) return;
-      if (r.col === 0 && r.row === 2) return;
-      drawRoom(r);
-    });
+    Object.values(ROOMS).forEach(r => { if (r.col === 3 && r.row === 0) return; if (r.col === 0 && r.row === 2) return; drawRoom(r); });
     DOORS.forEach(drawSeal);
 
     const targetRoom = ROOMS[current];
-    const targetX = roomCX(targetRoom);
-    const targetY = roomCY(targetRoom);
-
-    if (isFirstFrame) { playerVisualX = targetX; playerVisualY = targetY; isFirstFrame = false; }
-    playerVisualX += (targetX - playerVisualX) * 0.08;
-    playerVisualY += (targetY - playerVisualY) * 0.08;
+    if (isFirstFrame) { playerVisualX = roomCX(targetRoom); playerVisualY = roomCY(targetRoom); isFirstFrame = false; }
+    playerVisualX += (roomCX(targetRoom) - playerVisualX) * 0.08;
+    playerVisualY += (roomCY(targetRoom) - playerVisualY) * 0.08;
 
     drawGlow(playerVisualX, playerVisualY, 40, 'rgb(0,245,255)', 0.4);
     const pulse = 0.8 + 0.2 * Math.sin(tick * 0.1);
     ctx.beginPath(); ctx.arc(playerVisualX, playerVisualY, 8 * pulse, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff'; ctx.fill();
-    ctx.shadowColor = '#00f5ff'; ctx.shadowBlur = 15; ctx.stroke(); ctx.shadowBlur = 0; 
-
+    ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.shadowColor = '#00f5ff'; ctx.shadowBlur = 15; ctx.stroke(); ctx.shadowBlur = 0; 
     tick++;
   }
 
@@ -278,10 +251,8 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
     if(tRow) {
       tRow.innerHTML = '';
       [{ l: 'P', v: r.P }, { l: 'Q', v: r.Q }, { l: 'R', v: r.R }].forEach(t => {
-        const d = document.createElement('div');
-        d.className = 'token ' + (t.v ? 'T' : 'F');
-        d.innerHTML = `<span>${t.v ? 'V' : 'F'}</span><span class="token-label">${t.l}</span>`;
-        tRow.appendChild(d);
+        const d = document.createElement('div'); d.className = 'token ' + (t.v ? 'T' : 'F');
+        d.innerHTML = `<span>${t.v ? 'V' : 'F'}</span><span class="token-label">${t.l}</span>`; tRow.appendChild(d);
       });
     }
 
@@ -291,10 +262,8 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
       const avail = DOORS.filter(d => d.from === current || (d.to === current));
       avail.forEach(d => {
         const dest = d.from === current ? d.to : d.from;
-        const key = d.from + '→' + d.to;
-        const done = unlocked.has(key);
-        const btn = document.createElement('button');
-        btn.className = 'door-btn';
+        const done = unlocked.has(d.from + '→' + d.to);
+        const btn = document.createElement('button'); btn.className = 'door-btn';
         btn.innerHTML = `<span class="formula">${d.formula}</span><span class="dest">→ ${ROOMS[dest].name}${done ? ' ✓' : ''}</span>`;
         btn.onclick = () => openModal(d);
         if (d.to === current && !unlocked.has(d.from + '→' + d.to)) btn.style.opacity = '0.4';
@@ -303,19 +272,13 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
       });
     }
 
-    const scoreEl = document.getElementById('h-score');
-    if(scoreEl) scoreEl.textContent = score.toString();
-    
-    const roomsEl = document.getElementById('h-rooms');
-    if(roomsEl) roomsEl.textContent = `${visited.size}/10`;
-    
-    const livesEl = document.getElementById('h-lives');
-    if(livesEl) livesEl.textContent = '❤'.repeat(lives) + '🖤'.repeat(Math.max(0, config.maxLives - lives));
+    const scoreEl = document.getElementById('h-score'); if(scoreEl) scoreEl.textContent = score.toString();
+    const roomsEl = document.getElementById('h-rooms'); if(roomsEl) roomsEl.textContent = `${visited.size}/10`;
+    const livesEl = document.getElementById('h-lives'); if(livesEl) livesEl.textContent = '❤'.repeat(lives) + '🖤'.repeat(Math.max(0, config.maxLives - lives));
   }
 
   function processTimer() {
     if (!isModalOpen || !config.timeLimit) return;
-    
     const elapsed = (performance.now() - timerStart) / 1000;
     const remaining = Math.max(0, config.timeLimit - elapsed);
     const percent = (remaining / config.timeLimit) * 100;
@@ -326,21 +289,21 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
       bar.style.backgroundColor = percent < 30 ? '#ef4444' : percent < 60 ? '#f59e0b' : '#00f5ff';
     }
 
-    if (remaining === 0) {
-      forceTimeout();
-    } else {
-      timerRafId = requestAnimationFrame(processTimer);
-    }
+    if (remaining === 0) forceTimeout();
+    else timerRafId = requestAnimationFrame(processTimer);
   }
 
   function forceTimeout() {
     isModalOpen = false;
-    const fb = document.getElementById('modal-feedback') as HTMLElement;
+    const fb = document.getElementById('modal-feedback');
     lives = Math.max(0, lives - 1);
     
-    fb.textContent = `⏳ TEMPO ESGOTADO! Sistema bloqueou o acesso. -1 vida`;
-    fb.className = 'fb-err';
-    document.getElementById('modal-close-btn')!.style.display = 'inline-block';
+    if(fb) {
+      fb.textContent = `⏳ TEMPO ESGOTADO! Sistema bloqueou o acesso. -1 vida`;
+      fb.className = 'fb-err';
+    }
+    const btn = document.getElementById('modal-close-btn');
+    if (btn) btn.style.display = 'inline-block';
     
     if (lives === 0) setTimeout(() => { closeModal(); resetGame(); }, 1500);
     updateSidebar();
@@ -348,57 +311,56 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
 
   function openModal(d: Door) {
     if (unlocked.has(d.from + '→' + d.to)) { moveRoom(d.to === current ? d.from : d.to); return; }
+    
     activeDoor = d;
     const r = ROOMS[current];
-    document.getElementById('m-from-to')!.textContent = `${ROOMS[d.from].name} → ${ROOMS[d.to].name}`;
-    document.getElementById('m-formula')!.textContent = d.formula;
+    const fromTo = document.getElementById('m-from-to'); if(fromTo) fromTo.textContent = `${ROOMS[d.from].name} → ${ROOMS[d.to].name}`;
+    const mForm = document.getElementById('m-formula'); if(mForm) mForm.textContent = d.formula;
     
-    const pqr = document.getElementById('m-pqr') as HTMLElement; pqr.innerHTML = '';
-    [{ l: 'P', v: r.P }, { l: 'Q', v: r.Q }, { l: 'R', v: r.R }].forEach(t => {
-      const c = document.createElement('div'); c.className = 'pqr-chip ' + (t.v ? 'T' : 'F');
-      c.textContent = `${t.l} = ${t.v ? 'V' : 'F'}`; pqr.appendChild(c);
-    });
+    const pqr = document.getElementById('m-pqr');
+    if (pqr) {
+      pqr.innerHTML = '';
+      [{ l: 'P', v: r.P }, { l: 'Q', v: r.Q }, { l: 'R', v: r.R }].forEach(t => {
+        const c = document.createElement('div'); c.className = 'pqr-chip ' + (t.v ? 'T' : 'F');
+        c.textContent = `${t.l} = ${t.v ? 'V' : 'F'}`; pqr.appendChild(c);
+      });
+    }
     
-    document.getElementById('modal-feedback')!.textContent = '';
-    document.getElementById('modal-feedback')!.className = '';
-    document.getElementById('modal-close-btn')!.style.display = 'none';
-    const modal = document.getElementById('modal')!;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+    const fb = document.getElementById('modal-feedback'); if (fb) { fb.textContent = ''; fb.className = ''; }
+    const closeBtn = document.getElementById('modal-close-btn'); if (closeBtn) closeBtn.style.display = 'none';
+
+    const modalDiv = document.getElementById('modal');
+    if (modalDiv) modalDiv.style.display = 'flex';
 
     isModalOpen = true;
     if (config.timeLimit) {
-      document.getElementById('m-timer-wrapper')!.style.display = 'block';
-      document.getElementById('m-timer-bar')!.style.width = '100%';
+      const wrapper = document.getElementById('m-timer-wrapper'); if (wrapper) wrapper.style.display = 'block';
+      const bar = document.getElementById('m-timer-bar'); if (bar) bar.style.width = '100%';
       timerStart = performance.now();
       timerRafId = requestAnimationFrame(processTimer);
-    } else {
-      document.getElementById('m-timer-wrapper')!.style.display = 'none';
     }
   }
 
   function answer(userSays: boolean) {
     if (!activeDoor || !isModalOpen) return;
-    
     isModalOpen = false; 
     cancelAnimationFrame(timerRafId);
     
-    const r = ROOMS[current];
-    const correct = evaluate(activeDoor.formula, r.P, r.Q, r.R);
-    const fb = document.getElementById('modal-feedback') as HTMLElement;
+    const correct = evaluate(activeDoor.formula, ROOMS[current].P, ROOMS[current].Q, ROOMS[current].R);
+    const fb = document.getElementById('modal-feedback');
     const key = activeDoor.from + '→' + activeDoor.to;
     const destinationRoom = activeDoor.from === current ? activeDoor.to : activeDoor.from;
     
     if (userSays === correct) {
       score += (config.timeLimit === 5 ? 300 : config.timeLimit ? 150 : 100);
       unlocked.add(key);
-      fb.textContent = '✓ Acesso Concedido!'; fb.className = 'fb-ok';
-      document.getElementById('modal-close-btn')!.style.display = 'inline-block';
+      if(fb) { fb.textContent = '✓ Acesso Concedido!'; fb.className = 'fb-ok'; }
+      const btn = document.getElementById('modal-close-btn'); if(btn) btn.style.display = 'inline-block';
       setTimeout(() => { closeModal(); moveRoom(destinationRoom); }, 1000);
     } else {
       lives = Math.max(0, lives - 1);
-      fb.textContent = `✗ Resposta Incorreta! Era ${correct ? 'VERDADEIRO' : 'FALSO'}. -1 vida`; fb.className = 'fb-err';
-      document.getElementById('modal-close-btn')!.style.display = 'inline-block';
+      if(fb) { fb.textContent = `✗ Resposta Incorreta! Era ${correct ? 'VERDADEIRO' : 'FALSO'}. -1 vida`; fb.className = 'fb-err'; }
+      const btn = document.getElementById('modal-close-btn'); if(btn) btn.style.display = 'inline-block';
       if (lives === 0) setTimeout(() => { closeModal(); resetGame(); }, 1500);
     }
     updateSidebar();
@@ -407,18 +369,16 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
   function closeModal() {
     isModalOpen = false;
     cancelAnimationFrame(timerRafId);
-    const modal = document.getElementById('modal')!;
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    const modalDiv = document.getElementById('modal');
+    if (modalDiv) modalDiv.style.display = 'none';
     activeDoor = null;
   }
 
   function moveRoom(id: string) {
     current = id; visited.add(id); updateSidebar();
     if (ROOMS[id].type === 'end') {
-      const win = document.getElementById('win')!;
-      win.classList.remove('hidden');
-      win.classList.add('flex');
+      const winDiv = document.getElementById('win');
+      if (winDiv) winDiv.style.display = 'flex';
       saveScore(score, config.modeName);
     }
   }
@@ -426,9 +386,8 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
   function resetGame() {
     current = 'inicio'; visited = new Set(['inicio']); unlocked = new Set(); 
     score = 0; lives = config.maxLives; activeDoor = null;
-    const win = document.getElementById('win')!;
-    win.classList.add('hidden');
-    win.classList.remove('flex');
+    const winDiv = document.getElementById('win');
+    if (winDiv) winDiv.style.display = 'none';
     updateSidebar();
   }
 
@@ -436,12 +395,21 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
   window.closeModal = closeModal;
   window.resetGame = resetGame;
 
-  const clickHandler = (e: MouseEvent) => {
-    const scaleX = canvas.width / canvas.clientWidth;
-    const scaleY = canvas.height / canvas.clientHeight;
+  // ====================================================
+  // SOLUÇÃO FINAL DE DETECÇÃO DE CLIQUE NO CANVAS
+  // ====================================================
+  const clickHandler = (e: Event) => {
+    if (isModalOpen) return;
     
-    const mx = e.offsetX * scaleX;
-    const my = e.offsetY * scaleY;
+    // Converte o evento para a interface nativa de rato
+    const mouseEvent = e as MouseEvent;
+    
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const mx = (mouseEvent.clientX - rect.left) * scaleX;
+    const my = (mouseEvent.clientY - rect.top) * scaleY;
     
     let best: Door | null = null, bestD = 99;
     
@@ -450,20 +418,17 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
       const dist = Math.hypot(mx - p.x, my - p.y);
       const isConnected = d.from === current || d.to === current;
       
-      if (isConnected && dist < 60 && dist < bestD) { 
-        bestD = dist; 
-        best = d; 
-      }
+      // Hitbox massiva de 80px
+      if (isConnected && dist < 80 && dist < bestD) { bestD = dist; best = d; }
     });
     
     if (best) openModal(best);
   };
 
+  // Escuta apenas pelo evento de clique padrão garantindo leitura universal
   canvas.addEventListener('click', clickHandler);
 
   function loop() { loopId = requestAnimationFrame(loop); drawAll(); }
-  
-
   setTimeout(updateSidebar, 50); 
   loop();
 

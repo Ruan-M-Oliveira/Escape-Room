@@ -1,8 +1,7 @@
-/* ═══════════════════════════════════════════════════════════════
-   ESCAPE[C]ODE — Game Screen CSS
-   ═══════════════════════════════════════════════════════════════ */
+* { box-sizing: border-box !important; }
+body, html { margin: 0; padding: 0; overflow-x: hidden; width: 100%; }
+.game-container { min-height: 100vh; width: 100vw; display: flex; flex-direction: column; }
 
-/* ── Shell ──────────────────────────────────────────────────── */
 .game-shell {
   display: flex;
   flex-direction: column;
@@ -13,7 +12,6 @@
   overflow: hidden;
 }
 
-/* ── Header ─────────────────────────────────────────────────── */
 .game-header {
   display: flex;
   align-items: center;
@@ -73,7 +71,6 @@
   letter-spacing: -0.02em;
 }
 
-/* ── HUD center ─────────────────────────────────────────────── */
 .hud-center {
   display: flex;
   align-items: center;
@@ -117,7 +114,6 @@
   margin: 0 0.5rem;
 }
 
-/* ── Header right ───────────────────────────────────────────── */
 .header-right {
   display: flex;
   align-items: center;
@@ -165,7 +161,6 @@
   background: rgba(255,255,255,0.04);
 }
 
-/* ── Game Body ──────────────────────────────────────────────── */
 .game-body {
   display: flex;
   flex: 1;
@@ -174,7 +169,6 @@
   height: calc(100vh - 58px);
 }
 
-/* ── Map Panel ──────────────────────────────────────────────── */
 .map-panel {
   display: flex;
   flex-direction: column;
@@ -229,7 +223,6 @@
   padding: 0 0.2rem;
 }
 
-/* ── Aside ──────────────────────────────────────────────────── */
 .game-aside {
   width: 300px;
   flex-shrink: 0;
@@ -306,7 +299,6 @@
   gap: 0.4rem;
 }
 
-/* Door buttons */
 .door-btn {
   width: 100%;
   padding: 0.7rem 0.9rem;
@@ -340,7 +332,6 @@
   color: #64748b;
 }
 
-/* Aside tip */
 .aside-tip {
   font-size: 0.78rem;
   color: #475569;
@@ -354,7 +345,6 @@
 }
 .tip-icon { flex-shrink: 0; }
 
-/* Aside legend */
 .aside-legend {
   padding: 0.75rem;
   background: rgba(0,0,0,0.3);
@@ -383,7 +373,6 @@
 .legend-dot.purple { background: #a855f7; box-shadow: 0 0 6px #a855f7; }
 .legend-dot.yellow { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
 
-/* ── Door Modal ──────────────────────────────────────────────── */
 .overlay-modal {
   display: none;
   position: fixed;
@@ -518,7 +507,6 @@
   color: #c084fc;
 }
 
-/* ── End Overlays (Win / Game Over) ────────────────────────── */
 .overlay-end {
   display: none;
   position: fixed;
@@ -665,7 +653,6 @@
   color: #e2e8f0;
 }
 
-/* ── Animations ─────────────────────────────────────────────── */
 @keyframes ping {
   75%, 100% { transform: scale(2); opacity: 0; }
 }
