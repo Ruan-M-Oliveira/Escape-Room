@@ -24,9 +24,6 @@ declare global {
   }
 }
 
-// ==========================================
-// SISTEMA DE LEADERBOARD E JOGADOR
-// ==========================================
 export interface ScoreEntry {
   name: string;
   score: number;
@@ -59,9 +56,6 @@ export function saveScore(score: number, modeName: string) {
   localStorage.setItem('escape_scores', JSON.stringify(scores.slice(0, 10)));
 }
 
-// ==========================================
-// MOTOR DO JOGO PRINCIPAL
-// ==========================================
 export function initGame(config: { timeLimit: number | null, maxLives: number, modeName: string }, canvas: HTMLCanvasElement) {
   
   const ROOMS: Record<string, Room> = {
@@ -128,16 +122,13 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
 
   if (!canvas) return () => {};
 
-  // Ajusta o canvas para caber todo o mapa (e manter responsivo)
   const margin = 20;
   const mapWidth = Math.max(...COL) + RW + margin;
   const mapHeight = Math.max(...ROW) + RH + margin;
 
-  // Define o tamanho CSS do canvas e configura resolução para displays HiDPI
   if (canvas.parentElement) {
-    // tenta caber na largura do container sem ultrapassar
     const parentW = canvas.parentElement.clientWidth || mapWidth;
-    const cssW = Math.min(parentW - 32, mapWidth); // deixa um pouco de padding
+    const cssW = Math.min(parentW - 32, mapWidth); 
     canvas.style.width = cssW + 'px';
     canvas.style.height = mapHeight + 'px';
   } else {
@@ -422,17 +413,12 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
   window.closeModal = closeModal;
   window.resetGame = resetGame;
 
-  // ====================================================
-  // SOLUÇÃO FINAL DE DETECÇÃO DE CLIQUE NO CANVAS
-  // ====================================================
   const clickHandler = (e: Event) => {
     if (isModalOpen) return;
     
-    // Converte o evento para a interface nativa de rato
     const mouseEvent = e as MouseEvent;
     
     const rect = canvas.getBoundingClientRect();
-    // Usamos coordenadas CSS (px) pois todo o desenho é feito em CSS pixels
     const mx = mouseEvent.clientX - rect.left;
     const my = mouseEvent.clientY - rect.top;
     
@@ -443,14 +429,12 @@ export function initGame(config: { timeLimit: number | null, maxLives: number, m
       const dist = Math.hypot(mx - p.x, my - p.y);
       const isConnected = d.from === current || d.to === current;
       
-      // Hitbox massiva de 80px
       if (isConnected && dist < 80 && dist < bestD) { bestD = dist; best = d; }
     });
     
     if (best) openModal(best);
   };
 
-  // Escuta apenas pelo evento de clique padrão garantindo leitura universal
   canvas.addEventListener('click', clickHandler);
 
   function loop() { loopId = requestAnimationFrame(loop); drawAll(); }
